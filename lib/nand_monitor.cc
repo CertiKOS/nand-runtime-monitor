@@ -8,7 +8,7 @@
 #include "nand_types.h"
 
 #ifdef DEBUG
-#define log(...) fprintf(stderr, __VA_ARGS__)
+#define log(...) fprintf(stdout, __VA_ARGS__)
 #else
 #define log(...)
 #endif
@@ -101,7 +101,7 @@ public:
             read_awaiting_execute + error = bug,
             read_awaiting_execute + unexpected_event<_> = bug,
             // read_providing_data
-            read_providing_data + dummy = read_providing_data,
+            read_providing_data + dummy [is_nand_ready] = read_providing_data,
             read_providing_data + read_execute [is_nand_ready] = read_providing_data,
             read_providing_data + read_setup [is_nand_ready] = read_awaiting_block_address,
             read_providing_data + program_setup [is_nand_ready] = program_awaiting_block_address,
@@ -121,7 +121,7 @@ public:
             program_awaiting_byte_address + error = bug,
             program_awaiting_byte_address + unexpected_event<_> = bug,
             // program_accepting_data
-            program_accepting_data + dummy = program_accepting_data,
+            program_accepting_data + dummy [is_nand_ready] = program_accepting_data,
             program_accepting_data + program_execute [is_nand_ready] = program_accepting_data,
             program_accepting_data + read_setup [is_nand_ready] = read_awaiting_block_address,
             program_accepting_data + program_setup [is_nand_ready] = program_awaiting_block_address,
@@ -130,9 +130,9 @@ public:
             program_accepting_data + unexpected_event<_> = bug,
             // erase_awaiting_block_address
             erase_awaiting_block_address + erase_setup [is_nand_ready] = erase_awaiting_execute,
+            erase_awaiting_block_address + error = bug,
             erase_awaiting_block_address + unexpected_event<_> = bug,
             // erase_awaiting_execute
-            erase_awaiting_execute + dummy = erase_awaiting_execute,
             erase_awaiting_execute + erase_execute [is_nand_ready] = erase_awaiting_execute,
             erase_awaiting_execute + read_setup [is_nand_ready] = read_awaiting_block_address,
             erase_awaiting_execute + program_setup [is_nand_ready] = program_awaiting_block_address,

@@ -26,4 +26,5 @@ add_library(nand_monitor
     ${NAND_MONITOR_EXTRA})
 
 add_dependencies(nand_monitor
-    testrig-inc)
+    testrig-inc
+    testrig-patch)

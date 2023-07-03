@@ -84,7 +84,8 @@ add_custom_command(
 add_custom_target(testrig-clean
     COMMAND ${CMAKE_COMMAND} -E remove
         testrig.include.gen.tstamp
-        testrig.replace.monitor.tstamp
+        testrig.replace.monitor.state.tstamp
+        testrig.replace.monitor.parse.tstamp
     DEPENDS testrig.clean.tstamp
     )
 
