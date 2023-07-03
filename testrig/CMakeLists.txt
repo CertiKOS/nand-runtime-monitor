@@ -43,6 +43,8 @@ add_dependencies(devemu testrig-libde)
 add_custom_command(OUTPUT ${MONITOR_LIB_DIR}/librm.a
     COMMAND make
     DEPENDS testrig-inc testrig-patch
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/RuntimeMonitor/rm_parse.c
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/RuntimeMonitor/rm_state.c
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/RuntimeMonitor
     VERBATIM
     )
