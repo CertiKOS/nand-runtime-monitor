@@ -27,33 +27,6 @@ struct erase_execute_event{};
 struct dummy_event{};
 struct error_event{};
 
-
-// events
-const auto reset           = sml::event<reset_event>;
-const auto read_setup      = sml::event<read_setup_event>;
-const auto read_execute    = sml::event<read_execute_event>;
-const auto program_setup   = sml::event<program_setup_event>;
-const auto program_execute = sml::event<program_execute_event>;
-const auto erase_setup     = sml::event<erase_setup_event>;
-const auto erase_execute   = sml::event<erase_execute_event>;
-const auto dummy           = sml::event<dummy_event>;
-const auto error           = sml::event<error_event>;
-
-// states
-const auto bug                            = "bug"_s;
-const auto idle                           = "idle"_s;
-const auto read_awaiting_block_address    = "read_awaiting_block_address"_s;
-const auto read_awaiting_page_address     = "read_awaiting_page_address"_s;
-const auto read_awaiting_byte_address     = "read_awaiting_byte_address"_s;
-const auto read_awaiting_execute          = "read_awaiting_execute"_s;
-const auto read_providing_data            = "read_providing_data"_s;
-const auto program_awaiting_block_address = "program_awaiting_block_address"_s;
-const auto program_awaiting_page_address  = "program_awaiting_page_address"_s;
-const auto program_awaiting_byte_address  = "program_awaiting_byte_address"_s;
-const auto program_accepting_data         = "program_accepting_data"_s;
-const auto erase_awaiting_block_address   = "erase_awaiting_block_address"_s;
-const auto erase_awaiting_execute         = "erase_awaiting_execute"_s;
-
 class NandFlash
 {
 public:
@@ -64,75 +37,105 @@ public:
 
 auto is_nand_ready = [](NandFlash& nand) { return nand.ready; };
 auto nand_reset = [](NandFlash& nand) { nand.to_reset = true; };
+template<size_t S> auto nand_set_state = [](NandFlash& nand) { nand.state = S; };
 
 class NandMonitorStateMachine
 {
 public:
     auto operator()()
     {
+        // events
+        const auto reset           = sml::event<reset_event>;
+        const auto read_setup      = sml::event<read_setup_event>;
+        const auto read_execute    = sml::event<read_execute_event>;
+        const auto program_setup   = sml::event<program_setup_event>;
+        const auto program_execute = sml::event<program_execute_event>;
+        const auto erase_setup     = sml::event<erase_setup_event>;
+        const auto erase_execute   = sml::event<erase_execute_event>;
+        const auto dummy           = sml::event<dummy_event>;
+        const auto error           = sml::event<error_event>;
+
+        // states
+        const auto bug                            = "bug"_s;
+        const auto idle                           = "idle"_s;
+        const auto read_awaiting_block_address    = "read_awaiting_block_address"_s;
+        const auto read_awaiting_page_address     = "read_awaiting_page_address"_s;
+        const auto read_awaiting_byte_address     = "read_awaiting_byte_address"_s;
+        const auto read_awaiting_execute          = "read_awaiting_execute"_s;
+        const auto read_providing_data            = "read_providing_data"_s;
+        const auto program_awaiting_block_address = "program_awaiting_block_address"_s;
+        const auto program_awaiting_page_address  = "program_awaiting_page_address"_s;
+        const auto program_awaiting_byte_address  = "program_awaiting_byte_address"_s;
+        const auto program_accepting_data         = "program_accepting_data"_s;
+        const auto erase_awaiting_block_address   = "erase_awaiting_block_address"_s;
+        const auto erase_awaiting_execute         = "erase_awaiting_execute"_s;
+
         return make_transition_table(
             // clang-format off
             // initial
-          * idle + read_setup = read_awaiting_block_address ,
+          * idle + on_entry<_> / nand_set_state<MS_INITIAL_STATE>,
+            idle + read_setup = read_awaiting_block_address ,
             idle + program_setup = program_awaiting_block_address,
             idle + erase_setup = erase_awaiting_block_address,
             idle + error = bug,
             idle + unexpected_event<_> = bug,
             // bug
+            bug + on_entry<_> / nand_set_state<MS_BUG>,
             bug + reset / nand_reset = idle,
             bug + read_setup [is_nand_ready] / nand_reset = read_awaiting_block_address,
             bug + program_setup [is_nand_ready] / nand_reset = program_awaiting_block_address,
             bug + erase_setup [is_nand_ready] / nand_reset = erase_awaiting_block_address,
             bug + unexpected_event<_> = bug,
             // read_awaiting_block_address
+            read_awaiting_block_address + on_entry<_> / nand_set_state<MS_READ_AWAITING_BLOCK_ADDRESS>,
             read_awaiting_block_address + read_setup [is_nand_ready] = read_awaiting_page_address,
             read_awaiting_block_address + error = bug,
-            read_awaiting_block_address + unexpected_event<_> = bug,
             // read_awaiting_page_address
+            read_awaiting_page_address + on_entry<_> / nand_set_state<MS_READ_AWAITING_PAGE_ADDRESS>,
             read_awaiting_page_address + read_setup [is_nand_ready] = read_awaiting_byte_address,
             read_awaiting_page_address + error = bug,
-            read_awaiting_page_address + unexpected_event<_> = bug,
             // read_awaiting_byte_address
+            read_awaiting_byte_address + on_entry<_> / nand_set_state<MS_READ_AWAITING_BYTE_ADDRESS>,
             read_awaiting_byte_address + read_setup [is_nand_ready] = read_awaiting_execute,
             read_awaiting_byte_address + error = bug,
-            read_awaiting_byte_address + unexpected_event<_> = bug,
             // read_awaiting_execute
+            read_awaiting_execute + on_entry<_> / nand_set_state<MS_READ_AWAITING_EXECUTE>,
             read_awaiting_execute + read_execute [is_nand_ready] = read_providing_data,
             read_awaiting_execute + error = bug,
-            read_awaiting_execute + unexpected_event<_> = bug,
             // read_providing_data
+            read_providing_data + on_entry<_> / nand_set_state<MS_READ_PROVIDING_DATA>,
             read_providing_data + dummy [is_nand_ready] = read_providing_data,
             read_providing_data + read_execute [is_nand_ready] = read_providing_data,
             read_providing_data + read_setup [is_nand_ready] = read_awaiting_block_address,
             read_providing_data + program_setup [is_nand_ready] = program_awaiting_block_address,
             read_providing_data + erase_setup [is_nand_ready] = erase_awaiting_block_address,
             read_providing_data + error = bug,
-            read_providing_data + unexpected_event<_> = bug,
             // program_awaiting_block_address
+            program_awaiting_block_address + on_entry<_> / nand_set_state<MS_PROGRAM_AWAITING_BLOCK_ADDRESS>,
             program_awaiting_block_address + program_setup [is_nand_ready] = program_awaiting_page_address,
             program_awaiting_block_address + error = bug,
-            program_awaiting_block_address + unexpected_event<_> = bug,
             // program_awaiting_page_address
+            program_awaiting_page_address + on_entry<_> / nand_set_state<MS_PROGRAM_AWAITING_PAGE_ADDRESS>,
             program_awaiting_page_address + program_setup [is_nand_ready] = program_awaiting_byte_address,
             program_awaiting_page_address + error = bug,
-            program_awaiting_page_address + unexpected_event<_> = bug,
             // program_awaiting_byte_address
+            program_awaiting_byte_address + on_entry<_> / nand_set_state<MS_PROGRAM_AWAITING_BYTE_ADDRESS>,
             program_awaiting_byte_address + program_setup [is_nand_ready] = program_accepting_data,
             program_awaiting_byte_address + error = bug,
-            program_awaiting_byte_address + unexpected_event<_> = bug,
             // program_accepting_data
+            program_accepting_data + on_entry<_> / nand_set_state<MS_PROGRAM_ACCEPTING_DATA>,
             program_accepting_data + dummy [is_nand_ready] = program_accepting_data,
             program_accepting_data + program_execute [is_nand_ready] = program_accepting_data,
             program_accepting_data + read_setup [is_nand_ready] = read_awaiting_block_address,
             program_accepting_data + program_setup [is_nand_ready] = program_awaiting_block_address,
             program_accepting_data + erase_setup [is_nand_ready] = erase_awaiting_block_address,
             program_accepting_data + error = bug,
-            program_accepting_data + unexpected_event<_> = bug,
             // erase_awaiting_block_address
+            erase_awaiting_block_address + on_entry<_> / nand_set_state<MS_ERASE_AWAITING_BLOCK_ADDRESS>,
             erase_awaiting_block_address + erase_setup [is_nand_ready] = erase_awaiting_execute,
             erase_awaiting_block_address + error = bug,
-            erase_awaiting_block_address + unexpected_event<_> = bug,
             // erase_awaiting_execute
+            erase_awaiting_execute + on_entry<_> / nand_set_state<MS_ERASE_AWAITING_EXECUTE>,
             erase_awaiting_execute + erase_execute [is_nand_ready] = erase_awaiting_execute,
             erase_awaiting_execute + read_setup [is_nand_ready] = read_awaiting_block_address,
             erase_awaiting_execute + program_setup [is_nand_ready] = program_awaiting_block_address,
@@ -197,21 +200,19 @@ public:
 #endif
     {
     }
-    bool _execute(token_t& token, ms_t& machine_state);
+    bool do_execute(size_t command);
     void execute(token_t& token, ms_t& machine_state);
     bool ok() {return !sm.is("bug"_s); }
-    bool need_to_reset() {return nand.to_reset;}
+    bool need_to_reset() const {return nand.to_reset;}
 
-    size_t state();
+    size_t state() const;
     void reset();
 };
 
 bool
-NandMonitor::_execute(token_t& token, ms_t& machine_state)
+NandMonitor::do_execute(size_t command)
 {
-    nand.state = machine_state;
-    nand.ready = token.ready;
-    switch (token.command)
+    switch (command)
     {
     case C_READ_SETUP: return sm.process_event(read_setup_event{});
     case C_READ_EXECUTE: return sm.process_event(read_execute_event{});
@@ -228,83 +229,27 @@ void
 NandMonitor::execute(token_t& token, ms_t& machine_state)
 {
     nand.to_reset = false;
-    if (!_execute(token, machine_state))
+    nand.state = machine_state;
+    nand.ready = token.ready;
+
+    if (!do_execute(token.command))
     {
         sm.process_event(error_event{}); // if transition failed, go to bug state
     }
 }
 
-static inline const char * token_name(token_t & token)
+static inline const char*
+token_name(const token_t& token)
 {
-    switch (token.command)
-    {
-    case C_READ_SETUP: return "read_setup";
-    case C_READ_EXECUTE: return "read_execute";
-    case C_PROGRAM_SETUP: return "program_setup";
-    case C_PROGRAM_EXECUTE: return "program_execute";
-    case C_ERASE_SETUP: return "erase_setup";
-    case C_ERASE_EXECUTE: return "erase_execute";
-    case C_DUMMY: return "dummy";
-    default: return "C_UNKNOWN";
-    }
+    static const char* const token_command_str[] = C_NAMES;
+    return token.command <= C_DUMMY ? token_command_str[token.command]
+                                    : "C_UNKNOWN";
 }
 
 size_t
-NandMonitor::state()
+NandMonitor::state() const
 {
-    if (sm.is("idle"_s))
-    {
-        return MS_INITIAL_STATE;
-    }
-    else if (sm.is("bug"_s))
-    {
-        return MS_BUG;
-    }
-    else if (sm.is("read_awaiting_block_address"_s))
-    {
-        return MS_READ_AWAITING_BLOCK_ADDRESS;
-    }
-    else if (sm.is("read_awaiting_page_address"_s))
-    {
-        return MS_READ_AWAITING_PAGE_ADDRESS;
-    }
-    else if (sm.is("read_awaiting_byte_address"_s))
-    {
-        return MS_READ_AWAITING_BYTE_ADDRESS;
-    }
-    else if (sm.is("read_awaiting_execute"_s))
-    {
-        return MS_READ_AWAITING_EXECUTE;
-    }
-    else if (sm.is("read_providing_data"_s))
-    {
-        return MS_READ_PROVIDING_DATA;
-    }
-    else if (sm.is("program_awaiting_block_address"_s))
-    {
-        return MS_PROGRAM_AWAITING_BLOCK_ADDRESS;
-    }
-    else if (sm.is("program_awaiting_page_address"_s))
-    {
-        return MS_PROGRAM_AWAITING_PAGE_ADDRESS;
-    }
-    else if (sm.is("program_awaiting_byte_address"_s))
-    {
-        return MS_PROGRAM_AWAITING_BYTE_ADDRESS;
-    }
-    else if (sm.is("program_accepting_data"_s))
-    {
-        return MS_PROGRAM_ACCEPTING_DATA;
-    }
-    else if (sm.is("erase_awaiting_block_address"_s))
-    {
-        return MS_ERASE_AWAITING_BLOCK_ADDRESS;
-    }
-    else if (sm.is("erase_awaiting_execute"_s))
-    {
-        return MS_ERASE_AWAITING_EXECUTE;
-    }
-    return MS_BUG;
+    return nand.state;
 }
 
 void

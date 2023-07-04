@@ -14,15 +14,40 @@ enum rm_err_t
     ERR_FAIL,
 };
 
+#define __driver
+#define __monitor
+
 enum rm_err_t nand_monitor(token_t *token, ms_t *machine_state);
 void nand_monitor_reset();
 
+__driver bool rm_monitor(token_t *token, ms_t *machine_state);
+__driver void rm_monitor_reset();
+
 #ifdef MONITOR_INTERFACE_MSGQ
+
+enum rm_msg_type_t
+{
+    MSG_TOKEN,
+    MSG_RESET,
+};
 
 typedef struct
 {
+    enum rm_msg_type_t type;
     token_t token;
     ms_t machine_state;
+} token_msg_t;
+
+typedef struct
+{
+    enum rm_msg_type_t type;
+} empty_msg_t;
+
+typedef union
+{
+    enum rm_msg_type_t type;
+    token_msg_t token;
+    empty_msg_t empty;
 } msg_t;
 
 typedef struct
@@ -40,11 +65,9 @@ typedef struct
     int monitor, driver;
 } rm_monitor_t;
 
-#define __driver
-#define __monitor
-
 __monitor void rm_monitor_monitor(rm_monitor_t * m);
-__monitor void rm_monitor_next_token(rm_monitor_t * m, token_t *token, ms_t *machine_state);
+__monitor void rm_monitor_close(rm_monitor_t * m);
+__monitor enum rm_msg_type_t rm_monitor_next_token(rm_monitor_t * m, token_t *token, ms_t *machine_state);
 __monitor void rm_monitor_set_result(rm_monitor_t * m, enum rm_err_t succ, ms_t machine_state);
 
 #endif /* MONITOR_INTERFACE_MSGQ */

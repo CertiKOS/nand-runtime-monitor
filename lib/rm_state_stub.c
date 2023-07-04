@@ -34,12 +34,12 @@ rm_get_state(void)
  *
  */
 
-extern void nand_monitor_reset();
+extern void rm_monitor_reset();
 
 void
 rm_reset(void)
 {
     ns_reset();
-    nand_monitor_reset();
+    rm_monitor_reset();
     rm_machine_state = MS_INITIAL_STATE;
 }
