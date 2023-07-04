@@ -20,7 +20,7 @@ enum rm_err_t
 enum rm_err_t nand_monitor(token_t *token, ms_t *machine_state);
 void nand_monitor_reset();
 
-__driver bool rm_monitor(token_t *token, ms_t *machine_state);
+__driver enum rm_err_t rm_monitor(token_t *token, ms_t *machine_state);
 __driver void rm_monitor_reset();
 
 #ifdef MONITOR_INTERFACE_MSGQ

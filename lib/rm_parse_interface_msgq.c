@@ -102,7 +102,7 @@ static rm_monitor_t monitor =
     .ready = false,
 };
 
-__driver bool rm_monitor(token_t *token, ms_t *machine_state) {
+__driver enum rm_err_t rm_monitor(token_t *token, ms_t *machine_state) {
 
     if (!monitor.ready)
     {

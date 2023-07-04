@@ -24,6 +24,9 @@ message(STATUS "Monitor interface: ${MONITOR_INTERFACE}")
 
 option (MONITOR_DEBUG_MSG "Print debug messages" OFF)
 message(STATUS "Debug messages: ${MONITOR_DEBUG_MSG}")
+
+option (MONITOR_BUILD_BENCHMARKS "Build benchmarks" OFF)
+message(STATUS "Build benchmarks: ${MONITOR_BUILD_BENCHMARKS}")
 ##
 
 
@@ -43,6 +46,25 @@ endif()
 if (MONITOR_DEBUG_MSG)
     list(APPEND MONITOR_C_DEFINITIONS DEBUG)
 endif()
+
+if (MONITOR_BUILD_BENCHMARKS)
+    FetchContent_Declare(
+        googlebenchmark
+        GIT_REPOSITORY https://github.com/google/benchmark.git
+        GIT_TAG        v1.8.1
+    )
+    set (BENCHMARK_ENABLE_TESTING OFF CACHE BOOL "" FORCE)
+    set (BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
+    set (BENCHMARK_ENABLE_ASSEMBLY_TESTS OFF CACHE BOOL "" FORCE)
+    set (BENCHMARK_ENABLE_INSTALL OFF CACHE BOOL "" FORCE)
+
+    message(STATUS "Fetching google-benchmark ...")
+    FetchContent_MakeAvailable(googlebenchmark)
+
+    set (BENCHMARK_INC_DIR ${googlebenchmark_SOURCE_DIR}/include)
+endif()
+
+
 
 add_compile_definitions(${MONITOR_C_DEFINITIONS})
 ##

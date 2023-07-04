@@ -48,9 +48,6 @@ include(GoogleTest)
 include_directories(
     ${googletest_SOURCE_DIR}/googletest/include
     ${googletest_SOURCE_DIR}/googlemock/include
-    ${MONITOR_LIB_DIR}
-    ${MONITOR_TESTRIG_INCLUDE_DIR}
-    ${BOOST_SML_INCLUDE_DIR}
 )
 
 link_libraries(
@@ -63,4 +60,21 @@ add_executable(unit_nand_monitor
     unit_nand_monitor.cc
 )
 gtest_discover_tests(unit_nand_monitor)
+##
+
+
+# Benchmark
+add_compile_options(-O2 -march=native -mtune=native)
+
+include_directories(
+    ${BENCHMARK_INC_DIR}
+)
+link_libraries(
+    benchmark
+    pthread)
+
+
+add_executable(bench_nand_monitor
+    bench_nand_monitor.cc)
+
 ##
