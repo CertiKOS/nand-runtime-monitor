@@ -22,6 +22,9 @@ set_property(CACHE MONITOR_INTERFACE PROPERTY STRINGS
     )
 message(STATUS "Monitor interface: ${MONITOR_INTERFACE}")
 
+option (MONITOR_INTERFACE_ASYNC "Use asynchronous monitor interface" OFF)
+message(STATUS "Asynchronous monitor interface: ${MONITOR_INTERFACE_ASYNC}")
+
 option (MONITOR_DEBUG_MSG "Print debug messages" OFF)
 message(STATUS "Debug messages: ${MONITOR_DEBUG_MSG}")
 
@@ -35,8 +38,15 @@ set (MONITOR_C_DEFINITIONS)
 
 if (MONITOR_INTERFACE STREQUAL "func")
     list(APPEND MONITOR_C_DEFINITIONS MONITOR_INTERFACE_FUNC)
+    if (MONITOR_INTERFACE_ASYNC)
+        message (WARNING "Function call interface does not support asynchronous "
+            "calls. Ignoring MONITOR_INTERFACE_ASYNC.")
+    endif()
 elseif (MONITOR_INTERFACE STREQUAL "msgq")
     list(APPEND MONITOR_C_DEFINITIONS MONITOR_INTERFACE_MSGQ)
+    if (MONITOR_INTERFACE_ASYNC)
+        list(APPEND MONITOR_C_DEFINITIONS MONITOR_INTERFACE_ASYNC)
+    endif()
 elseif (MONITOR_INTERFACE STREQUAL "thinros")
     list(APPEND MONITOR_C_DEFINITIONS MONITOR_INTERFACE_THINROS)
 else()
@@ -63,8 +73,6 @@ if (MONITOR_BUILD_BENCHMARKS)
 
     set (BENCHMARK_INC_DIR ${googlebenchmark_SOURCE_DIR}/include)
 endif()
-
-
 
 add_compile_definitions(${MONITOR_C_DEFINITIONS})
 ##
@@ -119,37 +127,77 @@ add_dependencies(clean-all
 ##
 
 # Patch testrig's nand-monitor stub
-file(COPY_FILE
-    ${MONITOR_LIB_DIR}/rm_parse_stub.c
-    ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_parse.c
-    ONLY_IF_DIFFERENT
+
+if (MONITOR_INTERFACE_ASYNC)
+    file(COPY_FILE
+        ${MONITOR_LIB_DIR}/rm_parse_stub_async.c
+        ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_parse.c
+        ONLY_IF_DIFFERENT
+        )
+
+    add_custom_command(
+        OUTPUT testrig.replace.monitor.parse.tstamp
+        BYPRODUCTS ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_parse.c
+        DEPENDS ${MONITOR_LIB_DIR}/rm_parse_stub_async.c
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${MONITOR_LIB_DIR}/rm_parse_stub_async.c
+            ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_parse.c
+        VERBATIM
     )
 
-add_custom_command(
-    OUTPUT testrig.replace.monitor.parse.tstamp
-    BYPRODUCTS ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_parse.c
-    DEPENDS ${MONITOR_LIB_DIR}/rm_parse_stub.c
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    file(COPY_FILE
+        ${MONITOR_LIB_DIR}/rm_state_stub_async.c
+        ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_state.c
+        ONLY_IF_DIFFERENT
+        )
+
+    add_custom_command(
+        OUTPUT testrig.replace.monitor.state.tstamp
+        BYPRODUCTS ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_state.c
+        DEPENDS ${MONITOR_LIB_DIR}/rm_state_stub_async.c
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${MONITOR_LIB_DIR}/rm_state_stub_async.c
+            ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_state.c
+        VERBATIM
+    )
+
+else()
+    file(COPY_FILE
         ${MONITOR_LIB_DIR}/rm_parse_stub.c
         ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_parse.c
-    VERBATIM
-)
+        ONLY_IF_DIFFERENT
+        )
 
-file(COPY_FILE
-    ${MONITOR_LIB_DIR}/rm_state_stub.c
-    ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_state.c
-    ONLY_IF_DIFFERENT
+    add_custom_command(
+        OUTPUT testrig.replace.monitor.parse.tstamp
+        BYPRODUCTS ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_parse.c
+        DEPENDS ${MONITOR_LIB_DIR}/rm_parse_stub.c
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${MONITOR_LIB_DIR}/rm_parse_stub.c
+            ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_parse.c
+        VERBATIM
     )
 
-add_custom_command(
-    OUTPUT testrig.replace.monitor.state.tstamp
-    BYPRODUCTS ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_state.c
-    DEPENDS ${MONITOR_LIB_DIR}/rm_parse_stub.c
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    file(COPY_FILE
         ${MONITOR_LIB_DIR}/rm_state_stub.c
         ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_state.c
-    VERBATIM
-)
+        ONLY_IF_DIFFERENT
+        )
+
+    add_custom_command(
+        OUTPUT testrig.replace.monitor.state.tstamp
+        BYPRODUCTS ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_state.c
+        DEPENDS ${MONITOR_LIB_DIR}/rm_parse_stub.c
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${MONITOR_LIB_DIR}/rm_state_stub.c
+            ${MONITOR_TESTRIG_DIR}/RuntimeMonitor/rm_state.c
+        VERBATIM
+    )
+endif()
+
+
+
+
 
 add_custom_target(testrig-patch
     DEPENDS testrig.replace.monitor.parse.tstamp

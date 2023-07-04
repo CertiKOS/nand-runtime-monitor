@@ -12,6 +12,7 @@ link_libraries(
 
 add_executable(main_nand_monitor_msgq
     main_nand_monitor_msgq.cc
+    ${MONITOR_LIB_DIR}/msgq_common.c
     ${MONITOR_LIB_DIR}/rm_parse_interface_msgq.c)
 
 target_compile_definitions(
@@ -64,6 +65,11 @@ gtest_discover_tests(unit_nand_monitor)
 
 
 # Benchmark
+if (MONITOR_DEBUG_MSG)
+    message(WARNING "Benchmarking with debug messages enabled. Try to turn it
+    off with `cmake -DMONITOR_DEBUG_MSG=n ..`")
+endif()
+
 add_compile_options(-O2 -march=native -mtune=native)
 
 include_directories(

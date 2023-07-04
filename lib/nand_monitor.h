@@ -20,14 +20,24 @@ enum rm_err_t
 enum rm_err_t nand_monitor(token_t *token, ms_t *machine_state);
 void nand_monitor_reset();
 
+// sync
 __driver enum rm_err_t rm_monitor(token_t *token, ms_t *machine_state);
 __driver void rm_monitor_reset();
+
+// async
+#if MONITOR_INTERFACE_ASYNC
+__driver void rm_monitor_async_setup(ms_t* machine_state,
+        void (*parse_callback)(token_t token), void (*reset_callback)(void));
+__driver void rm_monitor_async(token_t *token, ms_t *machine_state);
+__driver void await_rm_monitor_async();
+__driver void rm_monitor_async_close();
+#endif
 
 #ifdef MONITOR_INTERFACE_MSGQ
 
 enum rm_msg_type_t
 {
-    MSG_TOKEN,
+    MSG_TOKEN = 0,
     MSG_RESET,
 };
 
@@ -61,7 +71,7 @@ typedef struct
 
 typedef struct
 {
-    enum rm_err_t ready;
+    bool ready;
     int monitor, driver;
 } rm_monitor_t;
 

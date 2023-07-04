@@ -78,9 +78,9 @@ include_directories(
 link_libraries(
     rmon
     nandstub
-    nand_monitor
     test
     devemu
+    nand_monitor
     )
 
 if (MONITOR_INTERFACE STREQUAL "msgq")

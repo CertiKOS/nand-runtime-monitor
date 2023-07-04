@@ -1,4 +1,7 @@
+#include <iostream>
+
 #include "nand_monitor.h"
+#include "nand_constants.h"
 
 static rm_monitor_t monitor;
 
@@ -19,10 +22,12 @@ int main(int argc, char *argv[]) {
             break;
         case MSG_RESET:
             nand_monitor_reset();
-            machine_state = 0;
+            machine_state = MS_INITIAL_STATE;
             status = ERR_OK;
             break ;
         default:
+            printf("Unknown message type %d\n", t);
+            exit(1);
             break;
         }
         rm_monitor_set_result(&monitor, status, machine_state);

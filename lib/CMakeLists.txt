@@ -15,7 +15,14 @@ if (MONITOR_INTERFACE STREQUAL "func")
         rm_parse_interface_func.c)
 elseif(MONITOR_INTERFACE STREQUAL "msgq")
     list(APPEND NAND_MONITOR_EXTRA
-        rm_parse_interface_msgq.c)
+        msgq_common.c)
+    if (NOT MONITOR_INTERFACE_ASYNC)
+        list(APPEND NAND_MONITOR_EXTRA
+            rm_parse_interface_msgq.c)
+    else()
+        list(APPEND NAND_MONITOR_EXTRA
+            rm_parse_interface_msgq_async.cc)
+    endif()
 else()
     message(FATAL_ERROR "Monitor interface `${MONITOR_INTERFACE}` is not supported!")
 endif()
