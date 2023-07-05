@@ -2,6 +2,8 @@
 #include <iostream>
 #include <pthread.h>
 #include <semaphore.h>
+#include <cassert>
+#include <atomic>
 
 #include "nand_monitor.h"
 #include "msgq_common.h"
@@ -10,7 +12,8 @@ struct rm_monitor_async_t
 {
     rm_monitor_t mon;
     std::queue<msg_t> msg_queue;
-    sem_t msg_queue_sem;
+    std::atomic_uint64_t tx, rx;
+    std::queue<size_t> await_stop;
     pthread_mutex_t lock;
     pthread_cond_t all_processed;
     ms_t * machine_state;
@@ -25,13 +28,21 @@ static struct rm_monitor_async_t am =
 
 static void waitfor_all_processed()
 {
+    if (!am.mon.ready)
+    {
+        return;
+    }
+
     pthread_mutex_lock(&am.lock);
-    if (am.msg_queue.empty())
+    if (std::atomic_load(&am.tx) == std::atomic_load(&am.rx))
     {
         pthread_mutex_unlock(&am.lock);
     }
     else
     {
+        assert(am.tx > am.rx);
+        size_t tx = std::atomic_load(&am.tx);
+        am.await_stop.push(tx);
         pthread_cond_wait(&am.all_processed, &am.lock);
         pthread_mutex_unlock(&am.lock);
     }
@@ -57,12 +68,21 @@ static void rm_monitor_async_callback(result_t * result)
     am.msg_queue.pop();
 
     pthread_mutex_lock(&am.lock);
-    if (am.msg_queue.empty())
+    atomic_fetch_add(&am.rx, 1);
+
+    if (am.await_stop.empty())
     {
         pthread_cond_signal(&am.all_processed);
     }
+    else
+    {
+        while ((!am.await_stop.empty()) && (am.await_stop.front() <= am.rx))
+        {
+            pthread_cond_broadcast(&am.all_processed);
+            am.await_stop.pop();
+        }
+    }
     pthread_mutex_unlock(&am.lock);
-    sem_post(&am.msg_queue_sem);
 }
 
 extern "C"
@@ -70,9 +90,10 @@ extern "C"
     __driver void rm_monitor_async_setup(ms_t* machine_state,
         void (*parse_callback)(token_t token), void (*reset_callback)(void))
     {
-        pthread_mutex_init(&am.lock, NULL);
-        pthread_cond_init(&am.all_processed, NULL);
-        sem_init(&am.msg_queue_sem, 0, MSGQ_QUEUE_SIZE - 1);
+        pthread_mutex_init(&am.lock, nullptr);
+        pthread_cond_init(&am.all_processed, nullptr);
+        std::atomic_store(&am.tx, 0);
+        std::atomic_store(&am.rx, 0);
 
         am.machine_state = machine_state;
         am.parse_callback = parse_callback;
@@ -102,9 +123,12 @@ extern "C"
         msg.token.token         = *token;
         msg.token.machine_state = *machine_state;
 
-        sem_wait(&am.msg_queue_sem);
         am.msg_queue.push(msg);
         msgq_tx_msg(&am.mon, &msg);
+
+        pthread_mutex_lock(&am.lock);
+        atomic_fetch_add(&am.tx, 1);
+        pthread_mutex_unlock(&am.lock);
     }
 
     __driver void await_rm_monitor_async()
@@ -123,9 +147,11 @@ extern "C"
             return;
         }
         msg_t msg = { MSG_RESET };
-
-        sem_wait(&am.msg_queue_sem);
         am.msg_queue.push(msg);
         msgq_tx_msg(&am.mon, &msg);
+
+        pthread_mutex_lock(&am.lock);
+        atomic_fetch_add(&am.tx, 1);
+        pthread_mutex_unlock(&am.lock);
     }
 }
