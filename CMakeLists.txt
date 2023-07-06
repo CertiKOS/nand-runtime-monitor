@@ -262,5 +262,7 @@ add_subdirectory(${MONITOR_TESTRIG_DIR} ${MONITOR_TESTRIG_BUILD_DIR})
 ##
 
 # Build unit tests
-add_subdirectory(${MONITOR_TOP_DIR}/tests)
+if (MONITOR_BUILD_BENCHMARKS)
+    add_subdirectory(${MONITOR_TOP_DIR}/tests)
+endif()
 ##
