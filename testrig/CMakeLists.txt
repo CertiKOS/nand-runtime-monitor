@@ -115,6 +115,9 @@ add_custom_command(POST_BUILD TARGET test_rm
     )
 
 add_executable(test_system
+    TestSystem/st_goto.c
+    TestSystem/st_oracle.c
+    TestSystem/st_print.c
     TestSystem/test_system.c
     )
 add_custom_command(POST_BUILD TARGET test_system
